@@ -6,14 +6,15 @@
 
 */
 
-
 (function($){
+  
   $.fn.extend({
-    driveImageLightbox: function(){
-      var imageLightbox = this;
+    driveImageLightbox:function(){
+        
+        var thisGallery = this;
+        
+        var popupGallery = {
 
-      var popupGallery = {
-   
         init : function(selector){
           var self = this;
           
@@ -23,7 +24,8 @@
           self.cf.prev  = $('<span class="popup-prev">&larr;</span>');
           self.cf.nav   = $('<div class="popup-nav"></div>');
           
-          self.instance     = imageLightbox.imageLightbox({
+          // Initialize the plugin
+          self.instance     = thisGallery.imageLightbox({
             onStart : function(){ self.addControls() },
             onEnd   : function(){ self.removeControls() }
           });
@@ -56,9 +58,8 @@
         },
         getCurrentIndex : function(){
          
-          var $target = this.instance.filter('[href="' + $( '#imagelightbox' ).attr( 'src' ) + '"]' ),
-              index     = $target.index(this.instance); 
-
+          var $target   = self.instance.filter( '[href="' + $( '#imagelightbox' ).attr( 'src' ) + '"]'  ),
+              index     = $target.index(self.instance); 
           return index;
           
         },
@@ -129,10 +130,13 @@
           })
                 
         }
-
       }
+
+      popupGallery.init();
+
     }
   })
+
 
 })(jQuery)
 
