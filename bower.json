@@ -1,0 +1,21 @@
+{
+  "name": "imageLightbox",
+  "main": "imageLightbox.js",
+  "version": "0.0.0",
+  "homepage": "https://github.com/felipearosemena/imageLightbox",
+  "description": "Responsive touch friendly image popup gallery",
+  "keywords": [
+    "popup"
+  ],
+  "authors": [
+    "Osvaldas Valutis"
+  ],
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ]
+}
