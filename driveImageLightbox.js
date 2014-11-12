@@ -13,6 +13,7 @@
         
         var thisGallery = this;
         
+
         var popupGallery = {
 
         init : function(selector){
@@ -24,7 +25,7 @@
           self.cf.prev  = $('<span class="popup-prev">&larr;</span>');
           self.cf.nav   = $('<div class="popup-nav"></div>');
           
-          var options = $.extend({
+          var mergedOptions = $.extend({
 
             selector:   'id="imagelightbox"',
             allowedTypes: 'png|jpg|jpeg|gif',
@@ -38,10 +39,11 @@
             onEnd   : function(){ self.removeControls() },
             onLoadStart:  false,
             onLoadEnd:    false
+
           }, options );
 
           // Initialize the plugin
-          self.instance     = thisGallery.imageLightbox(options);
+          self.instance     = thisGallery.imageLightbox(mergedOptions);
           
           self.instance.on('click',function(){
             self.current = $(this).index();
@@ -76,21 +78,41 @@
           return index;
           
         },
+        routeNext : function(){
+          var self = this;
+
+          if(self.current === (self.instance.length - 1) ){
+            self.instance.switchImageLightbox(0)
+            self.current = 0;
+          } else {
+            self.instance.switchImageLightbox(self.current + 1);
+            self.current++;
+          }
+          
+          self.setNavItemActive(self.current);
+
+        },
+        routePrev : function(){
+          var self = this;
+
+          if(self.current === 0 ){
+            self.instance.switchImageLightbox(self.instance.length - 1)
+            self.current = self.instance.length -1;
+           
+          } else {
+            self.instance.switchImageLightbox(self.current - 1);
+            self.current--;
+          }
+          
+          self.setNavItemActive(self.current);
+
+        },
         setArrows : function(){
           var self = this;
           
           self.cf.prev.on('click',function(e){
             
-            if(self.current === 0 ){
-              self.instance.switchImageLightbox(self.instance.length - 1)
-              self.current = self.instance.length -1;
-             
-            } else {
-              self.instance.switchImageLightbox(self.current - 1);
-              self.current--;
-            }
-            
-            self.setNavItemActive(self.current);
+            self.routePrev();
             
             return false;
             
@@ -98,16 +120,8 @@
           
           self.cf.next.on('click',function(e){
             
-            if(self.current === (self.instance.length - 1) ){
-              self.instance.switchImageLightbox(0)
-              self.current = 0;
-            } else {
-              self.instance.switchImageLightbox(self.current + 1);
-              self.current++;
-            }
-            
-            self.setNavItemActive(self.current);
-            
+            self.routeNext();
+
             return false;
             
           });
@@ -140,11 +154,24 @@
             }
             
             return false;
-          })
-                
-        }
-      }
+          });
 
+          $( document ).on( 'keyup', function( e ) {
+ 
+            e.preventDefault();
+            
+            if( e.keyCode == 37 ) {
+              self.routePrev();
+            }
+            if (e.keyCode == 39) {
+              self.routeNext();
+            }
+
+          });
+
+        }      
+      }
+      
       popupGallery.init();
 
     }
