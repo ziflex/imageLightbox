@@ -9,7 +9,7 @@
 (function($){
   
   $.fn.extend({
-    driveImageLightbox:function(){
+    driveImageLightbox:function(options){
         
         var thisGallery = this;
         
@@ -24,11 +24,24 @@
           self.cf.prev  = $('<span class="popup-prev">&larr;</span>');
           self.cf.nav   = $('<div class="popup-nav"></div>');
           
-          // Initialize the plugin
-          self.instance     = thisGallery.imageLightbox({
+          var options = $.extend({
+
+            selector:   'id="imagelightbox"',
+            allowedTypes: 'png|jpg|jpeg|gif',
+            animationSpeed: 250,
+            preloadNext:  true,
+            enableKeyboard: true,
+            quitOnEnd:    false,
+            quitOnImgClick: false,
+            quitOnDocClick: true,
             onStart : function(){ self.addControls() },
-            onEnd   : function(){ self.removeControls() }
-          });
+            onEnd   : function(){ self.removeControls() },
+            onLoadStart:  false,
+            onLoadEnd:    false
+          }, options );
+
+          // Initialize the plugin
+          self.instance     = thisGallery.imageLightbox(options);
           
           self.instance.on('click',function(){
             self.current = $(this).index();
