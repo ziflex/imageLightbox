@@ -116,11 +116,11 @@
     }); 
 
 
-    popupUI.close.click(function(e){
+    popupUI.close.on('click touchend',function(e){
       quitPopup(e,self);
     });
     
-    popupUI.overlay.click(function(e){
+    popupUI.overlay.on('click touchend',function(e){
       quitPopup(e,self);
     });
 
