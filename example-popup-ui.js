@@ -104,11 +104,14 @@
 
      var self = instance;
             
-    popupUI.prev.on('click',function(e){ routePrev(self); });
-    popupUI.next.on('click',function(e){ routeNext(self); });
-    
-    self.on('click',function(){
-      self.current = self.index(this);
+    popupUI.prev.on('click',function(e){ 
+      e.stopImmediatePropagation();
+      routePrev(self); 
+      
+    });
+    popupUI.next.on('click',function(e){ 
+      e.stopImmediatePropagation();
+      routeNext(self); 
     });
 
     self.each(function(){
@@ -137,17 +140,23 @@
       popupUI[k].remove();  
     } 
   }
+  
+  function updateUI(instance){
+    var currentIndex = getCurrentIndex(instance);
+    popupGallery.current = currentIndex;
+    setNavItemActive(currentIndex); // Update the nav when the image changes
+  }
 
-  var popupGalery = $('a').imageLightbox({
+  var popupGallery = $('a').imageLightbox({
     onStart : function(){ 
-      addUI(popupGalery);
+      addUI(popupGallery);
     },
     onEnd   : function(){ 
       removeUI();
     },
     onLoadStart:  false,
     onLoadEnd:    function(){
-      setNavItemActive(getCurrentIndex(popupGalery)); // Update the nav when the image changes
+      updateUI(popupGallery);
     }
   });
 
