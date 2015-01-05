@@ -58,3 +58,17 @@ Except event object also accept one or two additional arguments:
 ``direction`` - change direction 'left' or 'right'.
 <br/>
 ``index`` - specific image index. Passed only if ``switchImageLightbox`` was fired.
+
+
+### New option
+
+Added possibility to pass image container.
+
+```javascript
+
+    $( selector ).imageLightbox(
+    {
+        container: '#image-container'
+    });
+
+```

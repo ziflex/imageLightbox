@@ -220,7 +220,7 @@
 									}
 								});
 
-							image.appendTo('body');
+							image.appendTo(options.container);
 							setImage();
 
 							var params = { 'opacity': 1 };
@@ -280,6 +280,7 @@
 		options = $.extend(
 			{
 				selector:		'id="imagelightbox"',
+				container:      'body',
 				allowedTypes:	'png|jpg|jpeg|gif',
 				animationSpeed:	250,
 				preloadNext:	true,
