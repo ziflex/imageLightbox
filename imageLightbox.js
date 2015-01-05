@@ -267,13 +267,14 @@
 
 			quitLightbox = function()
 			{
-				if( !image.length ) return false;
-				image.animate({ 'opacity': 0 }, options.animationSpeed, function()
-				{
-					removeImage();
-					inProgress = false;
-					notify('onEnd');
-				});
+				if (notify('onEnd')) {
+					if( !image.length ) return false;
+					image.animate({ 'opacity': 0 }, options.animationSpeed, function()
+					{
+						removeImage();
+						inProgress = false;
+					});
+				}
 			};
 
 		options = $.extend(
