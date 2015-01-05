@@ -50,36 +50,53 @@
 			return false;
 		};
 
-	$.fn.imageLightbox = function( options )
+	$.fn.imageLightbox = function( opts )
 	{
-		var options	   = $.extend(
-						 {
-						 	selector:		'id="imagelightbox"',
-						 	allowedTypes:	'png|jpg|jpeg|gif',
-						 	animationSpeed:	250,
-						 	preloadNext:	true,
-						 	enableKeyboard:	true,
-						 	quitOnEnd:		false,
-						 	quitOnImgClick: false,
-						 	quitOnDocClick: true,
-						 	onStart:		false,
-						 	onEnd:			false,
-						 	onLoadStart:	false,
-						 	onLoadEnd:		false
-						 },
-						 options ),
+		var options	     = null,
+			targets		 = $([]),
+			target		 = $(),
+			image		 = $(),
+			imageWidth	 = 0,
+			imageHeight  = 0,
+			swipeDiff	 = 0,
+			inProgress	 = false,
+			direction    = null,
 
-			targets		= $([]),
-			target		= $(),
-			image		= $(),
-			imageWidth	= 0,
-			imageHeight = 0,
-			swipeDiff	= 0,
-			inProgress	= false,
+			defaultImageLoader = function (params) {
+				var image = $( '<img />'),
+					success = params.success || function () {},
+					failure = params.failure || function () {};
+
+				image.attr( 'src', params.url).load(function () {
+					success(image);
+				}).error(function () {
+					failure();
+				});
+			},
 
 			isTargetValid = function( element )
 			{
-				return $( element ).prop( 'tagName' ).toLowerCase() == 'a' && ( new RegExp( '\.(' + options.allowedTypes + ')$', 'i' ) ).test( $( element ).attr( 'href' ) );
+				var $element = $(element);
+				var prop = $element.prop( 'tagName' );
+
+				return prop && prop.toLowerCase() == 'a' && ( new RegExp( '\.(' + options.allowedTypes + ')$', 'i' ) ).test( $element.attr( 'href' ) );
+			},
+
+			notify = function (eventName, args) {
+				var evt = {
+						cancel: false
+					},
+					ret = true,
+					handler = options[eventName];
+
+				if (typeof handler === 'function') {
+					args = args || [];
+
+					handler.apply(this, [evt].concat(args));
+					ret = !evt.cancel;
+				}
+
+				return ret;
 			},
 
 			setImage = function()
@@ -134,98 +151,110 @@
 				}
 
 				inProgress = true;
-				if( options.onLoadStart !== false ) options.onLoadStart();
+				if (!notify('onLoadStart')) {
+					return false;
+				}
 
 				setTimeout( function()
 				{
-					image = $( '<img ' + options.selector + ' />' )
-					.attr( 'src', target.attr( 'href' ) )
-					.load( function()
-					{
-						image.appendTo( 'body' );
-						setImage();
+					options.imageLoader({
+						url: target.attr( 'href' ),
+						success: function (result) {
+							var swipeStart	 = 0,
+								swipeEnd	 = 0,
+								imagePosLeft = 0,
+								attr 		 = options.selector.split('=');
 
-						var params = { 'opacity': 1 };
+							image = $(result);
+							image.attr(attr[0], attr[1].replace(/\"/g, ''));
 
-						image.css( 'opacity', 0 );
-						if( isCssTransitionSupport )
-						{
-							cssTransitionTranslateX( image, -100 * direction + 'px', 0 );
-							setTimeout( function(){ cssTransitionTranslateX( image, 0 + 'px', options.animationSpeed / 1000 ) }, 50 );
-						}
-						else
-						{
-							var imagePosLeft = parseInt( image.css( 'left' ) );
-							params.left = imagePosLeft + 'px';
-							image.css( 'left', imagePosLeft - 100 * direction + 'px' );
-						}
+							image.on( hasPointers ? 'pointerup MSPointerUp' : 'click', function( e )
+							{
+								e.preventDefault();
+								if( options.quitOnImgClick )
+								{
+									quitLightbox();
+									return false;
+								}
+								if( wasTouched( e.originalEvent ) ) return true;
 
-						image.animate( params, options.animationSpeed, function()
-						{
-							inProgress = false;
-							if( options.onLoadEnd !== false ) options.onLoadEnd();
-						});
-						if( options.preloadNext )
-						{
-							var nextTarget = targets.eq( targets.index( target ) + 1 );
-							if( !nextTarget.length ) nextTarget = targets.eq( 0 );
-							$( '<img />' ).attr( 'src', nextTarget.attr( 'href' ) ).load();
-						}
-					})
-					.error( function()
-					{
-						if( options.onLoadEnd !== false ) options.onLoadEnd();
-					})
+								var posX = ( e.pageX || e.originalEvent.pageX ) - e.target.offsetLeft;
+								target = targets.eq( targets.index( target ) - ( imageWidth / 2 > posX ? 1 : -1 ) );
+								if( !target.length ) target = targets.eq( imageWidth / 2 > posX ? targets.length : 0 );
+								direction =  imageWidth / 2 > posX ? 'left' : 'right';
+								if (notify('onImgChange', [direction])) {
+									loadImage(direction);
+								}
+							})
+								.on( 'touchstart pointerdown MSPointerDown', function( e )
+								{
+									if( !wasTouched( e.originalEvent ) || options.quitOnImgClick ) return true;
+									if( isCssTransitionSupport ) imagePosLeft = parseInt( image.css( 'left' ) );
+									swipeStart = e.originalEvent.pageX || e.originalEvent.touches[ 0 ].pageX;
+								})
+								.on( 'touchmove pointermove MSPointerMove', function( e )
+								{
+									if( !wasTouched( e.originalEvent ) || options.quitOnImgClick ) return true;
+									e.preventDefault();
+									swipeEnd = e.originalEvent.pageX || e.originalEvent.touches[ 0 ].pageX;
+									swipeDiff = swipeStart - swipeEnd;
+									if( isCssTransitionSupport ) cssTransitionTranslateX( image, -swipeDiff + 'px', 0 );
+									else image.css( 'left', imagePosLeft - swipeDiff + 'px' );
+								})
+								.on( 'touchend touchcancel pointerup pointercancel MSPointerUp MSPointerCancel', function( e )
+								{
+									if( !wasTouched( e.originalEvent ) || options.quitOnImgClick ) return true;
+									if( Math.abs( swipeDiff ) > 50 )
+									{
+										target = targets.eq( targets.index( target ) - ( swipeDiff < 0 ? 1 : -1 ) );
+										if( !target.length ) target = targets.eq( swipeDiff < 0 ? targets.length : 0 );
+										direction = swipeDiff > 0 ? 'right' : 'left';
+										if (notify('onImgChange', [direction])) {
+											loadImage(direction);
+										}
+									}
+									else
+									{
+										if( isCssTransitionSupport ) cssTransitionTranslateX( image, 0 + 'px', options.animationSpeed / 1000 );
+										else image.animate({ 'left': imagePosLeft + 'px' }, options.animationSpeed / 2 );
+									}
+								});
 
-					var swipeStart	 = 0,
-						swipeEnd	 = 0,
-						imagePosLeft = 0;
+							image.appendTo('body');
+							setImage();
 
-					image.on( hasPointers ? 'pointerup MSPointerUp' : 'click', function( e )
-					{
-						e.preventDefault();
-						if( options.quitOnImgClick )
-						{
-							quitLightbox();
-							return false;
-						}
-						if( wasTouched( e.originalEvent ) ) return true;
-					    var posX = ( e.pageX || e.originalEvent.pageX ) - e.target.offsetLeft;
-						target = targets.eq( targets.index( target ) - ( imageWidth / 2 > posX ? 1 : -1 ) );
-						if( !target.length ) target = targets.eq( imageWidth / 2 > posX ? targets.length : 0 );
-						loadImage( imageWidth / 2 > posX ? 'left' : 'right' );
-					})
-					.on( 'touchstart pointerdown MSPointerDown', function( e )
-					{
-						if( !wasTouched( e.originalEvent ) || options.quitOnImgClick ) return true;
-						if( isCssTransitionSupport ) imagePosLeft = parseInt( image.css( 'left' ) );
-						swipeStart = e.originalEvent.pageX || e.originalEvent.touches[ 0 ].pageX;
-					})
-					.on( 'touchmove pointermove MSPointerMove', function( e )
-					{
-						if( !wasTouched( e.originalEvent ) || options.quitOnImgClick ) return true;
-						e.preventDefault();
-						swipeEnd = e.originalEvent.pageX || e.originalEvent.touches[ 0 ].pageX;
-						swipeDiff = swipeStart - swipeEnd;
-						if( isCssTransitionSupport ) cssTransitionTranslateX( image, -swipeDiff + 'px', 0 );
-						else image.css( 'left', imagePosLeft - swipeDiff + 'px' );
-					})
-					.on( 'touchend touchcancel pointerup pointercancel MSPointerUp MSPointerCancel', function( e )
-					{
-						if( !wasTouched( e.originalEvent ) || options.quitOnImgClick ) return true;
-						if( Math.abs( swipeDiff ) > 50 )
-						{
-							target = targets.eq( targets.index( target ) - ( swipeDiff < 0 ? 1 : -1 ) );
-							if( !target.length ) target = targets.eq( swipeDiff < 0 ? targets.length : 0 );
-							loadImage( swipeDiff > 0 ? 'right' : 'left' );	
-						}
-						else
-						{
-							if( isCssTransitionSupport ) cssTransitionTranslateX( image, 0 + 'px', options.animationSpeed / 1000 );
-							else image.animate({ 'left': imagePosLeft + 'px' }, options.animationSpeed / 2 );
+							var params = { 'opacity': 1 };
+
+							image.css( 'opacity', 0 );
+							if( isCssTransitionSupport )
+							{
+								cssTransitionTranslateX( image, -100 * direction + 'px', 0 );
+								setTimeout( function(){ cssTransitionTranslateX( image, 0 + 'px', options.animationSpeed / 1000 ) }, 50 );
+							}
+							else
+							{
+								var imagePosLeft = parseInt( image.css( 'left' ) );
+								params.left = imagePosLeft + 'px';
+								image.css( 'left', imagePosLeft - 100 * direction + 'px' );
+							}
+
+							image.animate( params, options.animationSpeed, function()
+							{
+								inProgress = false;
+								notify('onLoadEnd');
+							});
+
+							if( options.preloadNext && options.imageLoader === defaultImageLoader )
+							{
+								var nextTarget = targets.eq( targets.index( target ) + 1 );
+								if( !nextTarget.length ) nextTarget = targets.eq( 0 );
+								$( '<img />' ).attr( 'src', nextTarget.attr( 'href' ) ).load();
+							}
+						},
+						failure: function () {
+							notify('onLoadEnd');
 						}
 					});
-
 				}, options.animationSpeed + 100 );
 			},
 
@@ -243,9 +272,28 @@
 				{
 					removeImage();
 					inProgress = false;
-					if( options.onEnd !== false ) options.onEnd();
+					notify('onEnd');
 				});
 			};
+
+		options = $.extend(
+			{
+				selector:		'id="imagelightbox"',
+				allowedTypes:	'png|jpg|jpeg|gif',
+				animationSpeed:	250,
+				preloadNext:	true,
+				imageLoader:    defaultImageLoader,
+				enableKeyboard:	true,
+				quitOnEnd:		false,
+				quitOnImgClick: false,
+				quitOnDocClick: true,
+				onImgChange:    false,
+				onStart:		false,
+				onEnd:			false,
+				onLoadStart:	false,
+				onLoadEnd:		false
+			},
+			opts);
 
 		$( window ).on( 'resize', setImage );
 
@@ -268,7 +316,10 @@
 				{
 					target = targets.eq( targets.index( target ) - ( e.keyCode == 37 ? 1 : -1 ) );
 					if( !target.length ) target = targets.eq( e.keyCode == 37 ? targets.length : 0 );
-					loadImage( e.keyCode == 37 ? 'left' : 'right' );
+					direction = e.keyCode == 37 ? 'left' : 'right';
+					if (notify('onImgChange', [direction])) {
+						loadImage(direction);
+					}
 				}
 			});
 		}
@@ -279,9 +330,14 @@
 			e.preventDefault();
 			if( inProgress ) return false;
 			inProgress = false;
-			if( options.onStart !== false ) options.onStart();
+			if (!notify('onStart')) {
+				return false;
+			}
 			target = $( this );
-			loadImage();
+			direction = false;
+			if (notify('onImgChange', [direction])) {
+				loadImage(direction);
+			}
 		});
 
 		this.each( function()
@@ -297,7 +353,10 @@
 			{
 				var currentIndex = targets.index( target );
 				target = tmpTarget;
-				loadImage( index < currentIndex ? 'left' : 'right' );
+				direction = index < currentIndex ? 'left' : 'right';
+				if (notify('onImgChange', [direction, index])) {
+					loadImage(direction);
+				}
 			}
 			return this;
 		};
